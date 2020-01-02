@@ -36,6 +36,9 @@ class MainWindow : public QMainWindow, public Ui::MainWindow
 {
     Q_OBJECT
     public:
+        static bool isAlive() {
+            return instance != nullptr;
+        }
         static MainWindow* getInstance() {
             // !NOT thread safe  - first call from main only
             if (!instance)
@@ -70,19 +73,15 @@ private:
         void initializeHomeDir();
         void updateHashControls();
 
-        HANDLE hVolume;
-        HANDLE hFile;
-        HANDLE hRawDisk;
         static const unsigned short ONE_SEC_IN_MS = 1000;
         unsigned long long sectorsize;
         int status;
-        char *sectorData;
-        char *sectorData2; //for verify
         QTime update_timer;
-        ElapsedTimer *elapsed_timer = NULL;
+        QSharedPointer<ElapsedTimer> m_ElapsedTimer;
         QClipboard *clipboard;
         void generateHash(char *filename, int hashish);
         QString myHomeDir;
+        QMutex  m_Lock;
 };
 
 #endif // MAINWINDOW_H

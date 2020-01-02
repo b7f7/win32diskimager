@@ -34,7 +34,7 @@ class ElapsedTimer : public QLabel
     Q_OBJECT
 
 public:
-    ElapsedTimer(QWidget *parent = 0);
+    ElapsedTimer(QWidget *parent = nullptr);
     ~ElapsedTimer();
     int ms();
     void update(unsigned long long progress, unsigned long long total);

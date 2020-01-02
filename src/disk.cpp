@@ -29,6 +29,20 @@
 #include <winioctl.h>
 #include "disk.h"
 #include "mainwindow.h"
+inline QString GetErrorMessage()
+{
+    wchar_t*  errormessage=nullptr;
+    ::FormatMessageW(  FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER
+                     , nullptr
+                     , GetLastError()
+                     , 0
+                     , (LPWSTR)&errormessage
+                     , 0
+                     , nullptr);
+    QString errText = QString::fromUtf16((const ushort *)errormessage);
+    LocalFree(errormessage);
+    return errText;
+}
 
 HANDLE getHandleOnFile(LPCWSTR filelocation, DWORD access)
 {
@@ -36,13 +50,8 @@ HANDLE getHandleOnFile(LPCWSTR filelocation, DWORD access)
     hFile = CreateFileW(filelocation, access, (access == GENERIC_READ) ? FILE_SHARE_READ : 0, NULL, (access == GENERIC_READ) ? OPEN_EXISTING:CREATE_ALWAYS, 0, NULL);
     if (hFile == INVALID_HANDLE_VALUE)
     {
-        wchar_t *errormessage=NULL;
-        ::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER, NULL, GetLastError(), 0,
-                         (LPWSTR)&errormessage, 0, NULL);
-        QString errText = QString::fromUtf16((const ushort *)errormessage);
         QMessageBox::critical(MainWindow::getInstance(), QObject::tr("File Error"), QObject::tr("An error occurred when attempting to get a handle on the file.\n"
-                                                              "Error %1: %2").arg(GetLastError()).arg(errText));
-        LocalFree(errormessage);
+                                                              "Error %1: %2").arg(GetLastError()).arg(GetErrorMessage() ) );
     }
     return hFile;
 }
@@ -52,14 +61,9 @@ DWORD getDeviceID(HANDLE hVolume)
     DWORD bytesreturned;
     if (!DeviceIoControl(hVolume, IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS, NULL, 0, &sd, sizeof(sd), &bytesreturned, NULL))
     {
-        wchar_t *errormessage=NULL;
-        ::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER, NULL, GetLastError(), 0,
-                         (LPWSTR)&errormessage, 0, NULL);
-        QString errText = QString::fromUtf16((const ushort *)errormessage);
         QMessageBox::critical(MainWindow::getInstance(), QObject::tr("Volume Error"),
                               QObject::tr("An error occurred when attempting to get information on volume.\n"
-                                          "Error %1: %2").arg(GetLastError()).arg(errText));
-        LocalFree(errormessage);
+                                          "Error %1: %2").arg(GetLastError()).arg( GetErrorMessage() ) );
     }
     return sd.Extents[0].DiskNumber;
 }
@@ -71,13 +75,9 @@ HANDLE getHandleOnDevice(int device, DWORD access)
     hDevice = CreateFile(devicename.toLatin1().data(), access, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
     if (hDevice == INVALID_HANDLE_VALUE)
     {
-        wchar_t *errormessage=NULL;
-        FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER, NULL, GetLastError(), 0, (LPWSTR)&errormessage, 0, NULL);
-        QString errText = QString::fromUtf16((const ushort *)errormessage);
         QMessageBox::critical(MainWindow::getInstance(), QObject::tr("Device Error"),
                               QObject::tr("An error occurred when attempting to get a handle on the device.\n"
-                                          "Error %1: %2").arg(GetLastError()).arg(errText));
-        LocalFree(errormessage);
+                                          "Error %1: %2").arg(GetLastError()).arg(GetErrorMessage() ) );
     }
     return hDevice;
 }
@@ -90,13 +90,9 @@ HANDLE getHandleOnVolume(int volume, DWORD access)
     hVolume = CreateFile(volumename, access, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
     if (hVolume == INVALID_HANDLE_VALUE)
     {
-        wchar_t *errormessage=NULL;
-        FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER, NULL, GetLastError(), 0, (LPWSTR)&errormessage, 0, NULL);
-        QString errText = QString::fromUtf16((const ushort *)errormessage);
         QMessageBox::critical(MainWindow::getInstance(), QObject::tr("Volume Error"),
                               QObject::tr("An error occurred when attempting to get a handle on the volume.\n"
-                                          "Error %1: %2").arg(GetLastError()).arg(errText));
-        LocalFree(errormessage);
+                                          "Error %1: %2").arg(GetLastError()).arg(GetErrorMessage() ) );
     }
     return hVolume;
 }
@@ -108,13 +104,9 @@ bool getLockOnVolume(HANDLE handle)
     bResult = DeviceIoControl(handle, FSCTL_LOCK_VOLUME, NULL, 0, NULL, 0, &bytesreturned, NULL);
     if (!bResult)
     {
-        wchar_t *errormessage=NULL;
-        FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER, NULL, GetLastError(), 0, (LPWSTR)&errormessage, 0, NULL);
-        QString errText = QString::fromUtf16((const ushort *)errormessage);
         QMessageBox::critical(MainWindow::getInstance(), QObject::tr("Lock Error"),
                               QObject::tr("An error occurred when attempting to lock the volume.\n"
-                                          "Error %1: %2").arg(GetLastError()).arg(errText));
-        LocalFree(errormessage);
+                                          "Error %1: %2").arg(GetLastError()).arg(GetErrorMessage() ) );
     }
     return (bResult);
 }
@@ -126,13 +118,9 @@ bool removeLockOnVolume(HANDLE handle)
     bResult = DeviceIoControl(handle, FSCTL_UNLOCK_VOLUME, NULL, 0, NULL, 0, &junk, NULL);
     if (!bResult)
     {
-        wchar_t *errormessage=NULL;
-        FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER, NULL, GetLastError(), 0, (LPWSTR)&errormessage, 0, NULL);
-        QString errText = QString::fromUtf16((const ushort *)errormessage);
         QMessageBox::critical(MainWindow::getInstance(), QObject::tr("Unlock Error"),
                               QObject::tr("An error occurred when attempting to unlock the volume.\n"
-                                          "Error %1: %2").arg(GetLastError()).arg(errText));
-        LocalFree(errormessage);
+                                          "Error %1: %2").arg(GetLastError()).arg(GetErrorMessage() ) );
     }
     return (bResult);
 }
@@ -144,13 +132,9 @@ bool unmountVolume(HANDLE handle)
     bResult = DeviceIoControl(handle, FSCTL_DISMOUNT_VOLUME, NULL, 0, NULL, 0, &junk, NULL);
     if (!bResult)
     {
-        wchar_t *errormessage=NULL;
-        FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER, NULL, GetLastError(), 0, (LPWSTR)&errormessage, 0, NULL);
-        QString errText = QString::fromUtf16((const ushort *)errormessage);
         QMessageBox::critical(MainWindow::getInstance(), QObject::tr("Dismount Error"),
                               QObject::tr("An error occurred when attempting to dismount the volume.\n"
-                                          "Error %1: %2").arg(GetLastError()).arg(errText));
-        LocalFree(errormessage);
+                                          "Error %1: %2").arg(GetLastError()).arg(GetErrorMessage() ));
     }
     return (bResult);
 }
@@ -163,49 +147,55 @@ bool isVolumeUnmounted(HANDLE handle)
     return (!bResult);
 }
 
-char *readSectorDataFromHandle(HANDLE handle, unsigned long long startsector, unsigned long long numsectors, unsigned long long sectorsize)
+template <typename T>
+void array_delete(T* v)
+{
+    delete[] v;
+    v = nullptr;
+}
+QSharedPointer<char> readSectorDataFromHandle(HANDLE handle, unsigned long long startsector, unsigned long long numsectors, unsigned long long sectorsize)
 {
     unsigned long bytesread;
-    char *data = new char[sectorsize * numsectors];
-    LARGE_INTEGER li;
-    li.QuadPart = startsector * sectorsize;
-    SetFilePointer(handle, li.LowPart, &li.HighPart, FILE_BEGIN);
-    if (!ReadFile(handle, data, sectorsize * numsectors, &bytesread, NULL))
+    QSharedPointer<char> data(new char[sectorsize * numsectors], array_delete<char> );
+    if( data.isNull() )
     {
-        wchar_t *errormessage=NULL;
-        FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER, NULL, GetLastError(), 0, (LPWSTR)&errormessage, 0, NULL);
-        QString errText = QString::fromUtf16((const ushort *)errormessage);
         QMessageBox::critical(MainWindow::getInstance(), QObject::tr("Read Error"),
-                              QObject::tr("An error occurred when attempting to read data from handle.\n"
-                                          "Error %1: %2").arg(GetLastError()).arg(errText));
-        LocalFree(errormessage);
-        delete[] data;
-        data = NULL;
+                              QObject::tr("An error occurred when attempting to allocate %1 bytes.\n").arg(sectorsize * numsectors) );
     }
-    if (data && bytesread < (sectorsize * numsectors))
+    else
     {
-            memset(data + bytesread,0,(sectorsize * numsectors) - bytesread);
+        LARGE_INTEGER li;
+
+        li.QuadPart = startsector * sectorsize;
+        SetFilePointer(handle, li.LowPart, &li.HighPart, FILE_BEGIN);
+        if (!ReadFile(handle, data.data(), sectorsize * numsectors, &bytesread, NULL))
+        {
+            QMessageBox::critical(MainWindow::getInstance(), QObject::tr("Read Error"),
+                                  QObject::tr("An error occurred when attempting to read data from handle.\n"
+                                              "Error %1: %2").arg(GetLastError()).arg(GetErrorMessage() ));
+
+        }
+        if (bytesread < (sectorsize * numsectors))
+        {
+                memset(data.data() + bytesread,0,(sectorsize * numsectors) - bytesread);
+        }
     }
     return data;
 }
 
-bool writeSectorDataToHandle(HANDLE handle, char *data, unsigned long long startsector, unsigned long long numsectors, unsigned long long sectorsize)
+bool writeSectorDataToHandle(HANDLE handle, const QSharedPointer<char> &data, unsigned long long startsector, unsigned long long numsectors, unsigned long long sectorsize)
 {
     unsigned long byteswritten;
     BOOL bResult;
     LARGE_INTEGER li;
     li.QuadPart = startsector * sectorsize;
     SetFilePointer(handle, li.LowPart, &li.HighPart, FILE_BEGIN);
-    bResult = WriteFile(handle, data, sectorsize * numsectors, &byteswritten, NULL);
+    bResult = WriteFile(handle, data.data(), sectorsize * numsectors, &byteswritten, NULL);
     if (!bResult)
     {
-        wchar_t *errormessage=NULL;
-        FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER, NULL, GetLastError(), 0, (LPWSTR)&errormessage, 0, NULL);
-        QString errText = QString::fromUtf16((const ushort *)errormessage);
         QMessageBox::critical(MainWindow::getInstance(), QObject::tr("Write Error"),
                               QObject::tr("An error occurred when attempting to write data to handle.\n"
-                                          "Error %1: %2").arg(GetLastError()).arg(errText));
-        LocalFree(errormessage);
+                                          "Error %1: %2").arg(GetLastError()).arg(GetErrorMessage() ));
     }
     return (bResult);
 }
@@ -218,13 +208,9 @@ unsigned long long getNumberOfSectors(HANDLE handle, unsigned long long *sectors
     bResult = DeviceIoControl(handle, IOCTL_DISK_GET_DRIVE_GEOMETRY_EX, NULL, 0, &diskgeometry, sizeof(diskgeometry), &junk, NULL);
     if (!bResult)
     {
-        wchar_t *errormessage=NULL;
-        FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER, NULL, GetLastError(), 0, (LPWSTR)&errormessage, 0, NULL);
-        QString errText = QString::fromUtf16((const ushort *)errormessage);
         QMessageBox::critical(MainWindow::getInstance(), QObject::tr("Device Error"),
                               QObject::tr("An error occurred when attempting to get the device's geometry.\n"
-                                          "Error %1: %2").arg(GetLastError()).arg(errText));
-        LocalFree(errormessage);
+                                          "Error %1: %2").arg(GetLastError()).arg(GetErrorMessage() ));
         return 0;
     }
     if (sectorsize != NULL)
@@ -242,14 +228,9 @@ unsigned long long getFileSizeInSectors(HANDLE handle, unsigned long long sector
         LARGE_INTEGER filesize;
         if(GetFileSizeEx(handle, &filesize) == 0)
         {
-            // error
-            wchar_t *errormessage=NULL;
-            FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER, NULL, GetLastError(), 0, (LPWSTR)&errormessage, 0, NULL);
-            QString errText = QString::fromUtf16((const ushort *)errormessage);
             QMessageBox::critical(MainWindow::getInstance(), QObject::tr("File Error"),
                                   QObject::tr("An error occurred while getting the file size.\n"
-                                              "Error %1: %2").arg(GetLastError()).arg(errText));
-            LocalFree(errormessage);
+                                              "Error %1: %2").arg(GetLastError()).arg(GetErrorMessage() ));
             retVal = 0;
         }
         else
@@ -267,13 +248,10 @@ bool spaceAvailable(char *location, unsigned long long spaceneeded)
     bResult = GetDiskFreeSpaceEx(location, NULL, NULL, &freespace);
     if (!bResult)
     {
-        wchar_t *errormessage=NULL;
-        FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER, NULL, GetLastError(), 0, (LPWSTR)&errormessage, 0, NULL);
-        QString errText = QString::fromUtf16((const ushort *)errormessage);
         QMessageBox::critical(MainWindow::getInstance(), QObject::tr("Free Space Error"),
                               QObject::tr("Failed to get the free space on drive %1.\n"
                                           "Error %2: %3\n"
-                                          "Checking of free space will be skipped.").arg(location).arg(GetLastError()).arg(errText));
+                                          "Checking of free space will be skipped.").arg(location).arg(GetLastError()).arg(GetErrorMessage( ) ) );
         return true;
     }
     return (spaceneeded <= freespace.QuadPart);
@@ -324,23 +302,22 @@ BOOL GetDisksProperty(HANDLE hDevice, PSTORAGE_DEVICE_DESCRIPTOR pDevDesc,
     // Query using IOCTL_STORAGE_QUERY_PROPERTY
     bResult = ::DeviceIoControl(hDevice, IOCTL_STORAGE_QUERY_PROPERTY,
                 &Query, sizeof(STORAGE_PROPERTY_QUERY), pDevDesc,
-                pDevDesc->Size, &dwOutBytes, (LPOVERLAPPED)NULL);
+                pDevDesc->Size, &dwOutBytes, nullptr);
     if (bResult)
     {
         bResult = ::DeviceIoControl(hDevice, IOCTL_STORAGE_GET_DEVICE_NUMBER,
-                    NULL, 0, devInfo, sizeof(DEVICE_NUMBER), &dwOutBytes,
-                    (LPOVERLAPPED)NULL);
+                    nullptr, 0, devInfo, sizeof(DEVICE_NUMBER), &dwOutBytes,
+                    nullptr);
         if (!bResult)
         {
             retVal = false;
-            wchar_t *errormessage=NULL;
-            FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER, NULL, GetLastError(), 0, (LPWSTR)&errormessage, 0, NULL);
-            QString errText = QString::fromUtf16((const ushort *)errormessage);
-            QMessageBox::critical(MainWindow::getInstance(), QObject::tr("File Error"),
-                                  QObject::tr("An error occurred while getting the device number.\n"
-                                              "This usually means something is currently accessing the device;"
-                                              "please close all applications and try again.\n\nError %1: %2").arg(GetLastError()).arg(errText));
-            LocalFree(errormessage);
+            if( MainWindow::isAlive() )
+            {
+                QMessageBox::critical(MainWindow::getInstance(), QObject::tr("File Error"),
+                                      QObject::tr("An error occurred while getting the device number.\n"
+                                                  "This usually means something is currently accessing the device;"
+                                                  "please close all applications and try again.\n\nError %1: %2").arg(GetLastError()).arg(GetErrorMessage() ));
+            }
         }
     }
     else
@@ -353,14 +330,13 @@ BOOL GetDisksProperty(HANDLE hDevice, PSTORAGE_DEVICE_DESCRIPTOR pDevDesc,
         }
         else
         {
-            wchar_t *errormessage=NULL;
-            FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER, NULL, GetLastError(), 0, (LPWSTR)&errormessage, 0, NULL);
-            QString errText = QString::fromUtf16((const ushort *)errormessage);
-            QMessageBox::critical(MainWindow::getInstance(), QObject::tr("File Error"),
-                                  QObject::tr("An error occurred while querying the properties.\n"
-                                              "This usually means something is currently accessing the device;"
-                                              " please close all applications and try again.\n\nError %1: %2").arg(GetLastError()).arg(errText));
-            LocalFree(errormessage);
+            if( MainWindow::isAlive())
+            {
+                QMessageBox::critical(MainWindow::getInstance(), QObject::tr("File Error"),
+                                      QObject::tr("An error occurred while querying the properties.\n"
+                                                  "This usually means something is currently accessing the device;"
+                                                  " please close all applications and try again.\n\nError %1: %2").arg(GetLastError()).arg(GetErrorMessage() ) );
+            }
         }
             retVal = false;
     }
@@ -373,36 +349,23 @@ BOOL GetDisksProperty(HANDLE hDevice, PSTORAGE_DEVICE_DESCRIPTOR pDevDesc,
 // 		slash or no), and creates 2 versions - one with the slash, and one w/o
 //
 // 		CALLER MUST FREE THE 2 RETURNED STRINGS
-bool slashify(char *str, char **slash, char **noSlash)
+bool slashify(const std::string &name, std::string &slash, std::string &noSlash)
 {
-    bool retVal = false;
-    int strLen = strlen(str);
-    if ( strLen > 0 )
+    if ( !name.empty() )
     {
-        if ( *(str + strLen - 1) == '\\' )
+        if ( *name.rbegin() == '\\' )
         {
-            // trailing slash exists
-            if (( (*slash = (char *)calloc( (strLen + 1), sizeof(char))) != NULL) &&
-                    ( (*noSlash = (char *)calloc(strLen, sizeof(char))) != NULL))
-            {
-                strncpy(*slash, str, strLen);
-                strncpy(*noSlash, *slash, (strLen - 1));
-                retVal = true;
-            }
+            slash = name;
+            noSlash = name.substr(0, name.size()-1);
         }
         else
         {
-            // no trailing slash exists
-            if ( ((*slash = (char *)calloc( (strLen + 2), sizeof(char))) != NULL) &&
-                 ((*noSlash = (char *)calloc( (strLen + 1), sizeof(char))) != NULL) )
-            {
-                strncpy(*noSlash, str, strLen);
-                sprintf(*slash, "%s\\", *noSlash);
-                retVal = true;
-            }
+            slash = name+'\\';
+            noSlash = name;
         }
+        return true;
     }
-    return(retVal);
+    return false;
 }
 
 bool GetMediaType(HANDLE hDevice)
@@ -419,38 +382,41 @@ bool GetMediaType(HANDLE hDevice)
     return false;
 }
 
-bool checkDriveType(char *name, ULONG *pid)
+bool checkDriveType(const std::string &name, ULONG *pid)
 {
     HANDLE hDevice;
     PSTORAGE_DEVICE_DESCRIPTOR pDevDesc;
     DEVICE_NUMBER deviceInfo;
     bool retVal = false;
-    char *nameWithSlash;
-    char *nameNoSlash;
-    int driveType;
+    std::string nameWithSlash;
+    std::string nameNoSlash;
+    unsigned int driveType;
     DWORD cbBytesReturned;
 
     // some calls require no tailing slash, some require a trailing slash...
-    if ( !(slashify(name, &nameWithSlash, &nameNoSlash)) )
+    if ( !(slashify(name, nameWithSlash, nameNoSlash)) )
     {
         return(retVal);
     }
 
-    driveType = GetDriveType(nameWithSlash);
+    driveType = GetDriveType(nameWithSlash.c_str() );
     switch( driveType )
     {
     case DRIVE_REMOVABLE: // The media can be removed from the drive.
     case DRIVE_FIXED:     // The media cannot be removed from the drive. Some USB drives report as this.
-        hDevice = CreateFile(nameNoSlash, FILE_READ_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+        hDevice = CreateFile(nameNoSlash.c_str(), FILE_READ_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, nullptr);
         if (hDevice == INVALID_HANDLE_VALUE)
         {
-            wchar_t *errormessage=NULL;
-            FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER, NULL, GetLastError(), 0, (LPWSTR)&errormessage, 0, NULL);
-            QString errText = QString::fromUtf16((const ushort *)errormessage);
-            QMessageBox::critical(MainWindow::getInstance(), QObject::tr("Volume Error"),
-                                  QObject::tr("An error occurred when attempting to get a handle on %3.\n"
-                                              "Error %1: %2").arg(GetLastError()).arg(errText).arg(nameWithSlash));
-            LocalFree(errormessage);
+            if(MainWindow::isAlive() )
+            {
+                wchar_t *errormessage=nullptr;
+                FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER, nullptr, GetLastError(), 0, (LPWSTR)&errormessage, 0, nullptr);
+                QString errText = QString::fromUtf16((const ushort *)errormessage);
+                QMessageBox::critical(MainWindow::getInstance(), QObject::tr("Volume Error"),
+                                      QObject::tr("An error occurred when attempting to get a handle on %3.\n"
+                                                  "Error %1: %2").arg(GetLastError()).arg(errText).arg(QString::fromStdString(nameWithSlash)));
+                LocalFree(errormessage);
+            }
         }
         else
         {
@@ -476,7 +442,7 @@ bool checkDriveType(char *name, ULONG *pid)
                 // IOCTL_STORAGE_CHECK_VERIFY2 fails on some devices under XP/Vista, try the other (slower) method, just in case.
                 {
                     CloseHandle(hDevice);
-                    hDevice = CreateFile(nameNoSlash, FILE_READ_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+                    hDevice = CreateFile(nameNoSlash.c_str(), FILE_READ_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
                     if(DeviceIoControl(hDevice, IOCTL_STORAGE_CHECK_VERIFY, NULL, 0, NULL, 0, &cbBytesReturned, (LPOVERLAPPED) NULL))
                     {
                         *pid = deviceInfo.DeviceNumber;
@@ -493,10 +459,5 @@ bool checkDriveType(char *name, ULONG *pid)
     default:
         retVal = false;
     }
-
-    // free the strings allocated by slashify
-    free(nameWithSlash);
-    free(nameNoSlash);
-
     return(retVal);
 }
